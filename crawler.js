@@ -144,7 +144,7 @@ Crawler.prototype.setHeadersMap = function (uri, res) {
   var headers = {}
   if (res.headers.etag) headers['if-none-match'] = res.headers.etag
   if (res.headers['last-modified']) {
-    headers['if-modified-sice'] = res.headers['last-modified']
+    headers['if-modified-since'] = res.headers['last-modified']
   }
   this.headersMap.set(uri, headers)
 }
