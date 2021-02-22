@@ -1,0 +1,1370 @@
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:cc="http://web.resource.org/cc/">
+	<title>text.Baldanders.info</title>
+	<link rel="alternate" type="text/html" href="https://text.baldanders.info/" />
+	<link rel="self" type="application/atom+xml" href="https://text.baldanders.info/index.xml" />
+	<id>tag:text.Baldanders.info,2021-02-21:/</id>
+	<updated>2021-02-21T07:34:40+00:00</updated>
+	<subtitle>帰ってきた「しっぽのさきっちょ」</subtitle>
+	<icon>https://text.baldanders.info/images/avatar.jpg</icon>
+	<logo>https://text.baldanders.info/images/avatar.jpg</logo>
+
+	<entry>
+		<title>Go 1.16 からのモジュール管理</title>
+		<category term="golang" label="golang" scheme="https://text.baldanders.info/golang/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/golang/manage-modules/" />
+		<id>tag:text.Baldanders.info,2021-02-21:/golang/manage-modules/</id>
+		<published>2021-02-21T07:15:24+00:00</published>
+		<updated>2021-02-21T07:19:18+00:00</updated>
+		<summary>覚え書きとして記しておく</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;先日リリースされた &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 でモジュール管理がいくつか変更になったので，覚え書きとして記しておく。&lt;/p&gt;
+&lt;h2&gt;GO111MODULE 既定値の変更&lt;/h2&gt;
+&lt;p&gt;環境変数 &lt;code&gt;GO111MODULE&lt;/code&gt; の既定値が &lt;code&gt;auto&lt;/code&gt; から &lt;code&gt;on&lt;/code&gt; に変更になった。
+&lt;code&gt;GO111MODULE&lt;/code&gt; の取りうる値は以下の通り。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;値&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;on&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;常にモジュール対応モードで動作する&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;off&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;常に GOPATH モードで動作する&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;auto&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;$GOPATH/src&lt;/code&gt; 以下のディレクトリに配置され &lt;code&gt;go.mod&lt;/code&gt; を含まないパッケージは GOPATH モードで，それ以外はモジュール対応モードで動作する&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;code&gt;GO111MODULE&lt;/code&gt; の値を &lt;code&gt;auto&lt;/code&gt; に戻すのであれば &lt;code&gt;go env&lt;/code&gt; コマンドで&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go env -w GO111MODULE=auto
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とする。
+&lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; の環境変数の取り扱いについては，拙文「&lt;a href=&#34;https://text.baldanders.info/golang/go-env/&#34;&gt;Go 言語の環境変数管理&lt;/a&gt;」を参照のこと。&lt;/p&gt;
+&lt;h2&gt;go.mod および go.sum の自動更新の抑制&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.15 までは &lt;code&gt;go build&lt;/code&gt; や &lt;code&gt;go test&lt;/code&gt; などのコマンドで &lt;code&gt;go.mod&lt;/code&gt; や &lt;code&gt;go.sum&lt;/code&gt; の内容が勝手に更新されていたが， 1.16 からは自動では更新されなくなった。&lt;/p&gt;
+&lt;p&gt;なので，コード上の &lt;code&gt;import&lt;/code&gt; で新しい外部パッケージを追加しても &lt;code&gt;go.mod&lt;/code&gt; や &lt;code&gt;go.sum&lt;/code&gt; に記述がないと&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go test ./...
+main.go:9:2: no required module provides package github.com/spiegel-im-spiegel/cov19jpn/chart; to add it:
+	go get github.com/spiegel-im-spiegel/cov19jpn/chart
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とか&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go test ./...
+go: github.com/spiegel-im-spiegel/cov19jpn@v0.2.0: missing go.sum entry; to add it:
+	go mod download github.com/spiegel-im-spiegel/cov19jpn
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;みたいなエラーが出たりする。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;go.mod&lt;/code&gt; や &lt;code&gt;go.sum&lt;/code&gt; をいい感じに更新したいのであれば&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go mod tidy
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とするとよい。&lt;/p&gt;
+&lt;h2&gt;バージョン付きの go install&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;go install&lt;/code&gt; コマンドで指定するパッケージパスにバージョン番号サフィックスを付けることができるようになった。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go install golang.org/x/tools/gopls@v0.6.5
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;これでバージョンを指定してモジュールのビルド&amp;amp;インストールができる。
+ただし &lt;code&gt;go.mod&lt;/code&gt; ファイルが &lt;code&gt;replace&lt;/code&gt; や &lt;code&gt;exclude&lt;/code&gt; ディレクティブを含んでいると &lt;code&gt;go install&lt;/code&gt; が失敗するみたい。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go install github.com/spiegel-im-spiegel/cov19jpn@v0.2.0
+go install github.com/spiegel-im-spiegel/cov19jpn@v0.2.0: github.com/spiegel-im-spiegel/cov19jpn@v0.2.0
+	The go.mod file for the module providing named packages contains one or
+	more replace directives. It must not contain directives that would cause
+	it to be interpreted differently than if it were the main module.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;この場合は今までどおり &lt;code&gt;go get&lt;/code&gt; コマンドでビルドまでやってくれるが， &lt;code&gt;go get&lt;/code&gt; コマンドによるビルドは&lt;a href=&#34;https://github.com/golang/go/issues/43684&#34; title=&#34;cmd/go: deprecate installing binaries using &#39;go get&#39; in Go 1.17 and make &#39;go get -d&#39; the default behavior · Issue #43684 · golang/go&#34;&gt;将来的に廃止&lt;/a&gt;になるみたいなので，早めになんとかしたいものである。&lt;/p&gt;
+&lt;p&gt;でもなぁ，私の場合「&lt;a href=&#34;&#34;&gt;Go 依存パッケージの脆弱性検査&lt;/a&gt;」の誤検出対策に &lt;code&gt;replace&lt;/code&gt; ディレクティブを使ってるから悩ましいんだよなぁ&amp;hellip;&lt;/p&gt;
+&lt;h2&gt;特定バージョンのモジュールの撤回&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;go.mod&lt;/code&gt; で &lt;code&gt;retract&lt;/code&gt; ディレクティブを使って特定バージョンのモジュールを撤回できるようになった（&lt;code&gt;go&lt;/code&gt; ディレクティブが &lt;code&gt;1.16&lt;/code&gt; 以上の場合）。&lt;/p&gt;
+&lt;p&gt;こんな感じにコメントとともに指定するといいらしい（コメント付けられたのか）。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;// Remote-triggered crash in package foo. See CVE-2021-01234.
+retract v1.0.5
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;これでこのバージョンを使おうとしても&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go list -m -u all
+example.com/lib v1.0.0 (retracted)
+$ go get .
+go: warning: example.com/lib@v1.0.5: retracted by module author:
+    Remote-triggered crash in package foo. See CVE-2021-01234.
+go: to switch to the latest unretracted version, run:
+    go get example.com/lib@latest
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;てな感じにコメントの内容で警告が表示されるそうだ。&lt;/p&gt;
+&lt;h2&gt;GOVCS によるバージョン管理ツールの制御&lt;/h2&gt;
+&lt;p&gt;環境変数 &lt;code&gt;GOVCS&lt;/code&gt; を使ってリポジトリとバージョン管理ツールを関連付けることができる。
+これを使って悪意のあるリポジトリ・サーバへのアクセスを制限することを意図しているようだ。&lt;/p&gt;
+&lt;p&gt;環境変数の設定は &lt;code&gt;go env -w&lt;/code&gt; コマンドを使うとよいだろう。
+たとえば&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ go env -w &amp;#34;GOVCS=github.com:git,evil.com:off,*:git|hg&amp;#34;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とすれば， github.com サイトでは git のみ許容し evil.com は使用禁止，その他のサイトでは git および mercurial のみ許容する，といった指定ができるらしい。&lt;/p&gt;
+&lt;p&gt;なお &lt;code&gt;GOVCS&lt;/code&gt; の既定値は &lt;code&gt;public:git|hg,private:all&lt;/code&gt; となっている。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://blog.golang.org/go116-module-changes&#34;&gt;New module changes in Go 1.16 - The Go Blog&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/golang/versioning-of-go-modules/&#34;&gt;Go モジュールのバージョン管理&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/release/2021/02/go-1_16-is-released/&#34;&gt;Go 1.16 がリリースされた&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/41meaSLNFfL._SL160_.jpg&#34; width=&#34;123&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;プログラミング言語Go (ADDISON-WESLEY PROFESSIONAL COMPUTING SERIES)&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;Alan A.A. Donovan (著), Brian W. Kernighan (著), 柴田 芳樹 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;丸善出版 2016-06-20&lt;/dd&gt;
+    &lt;dd&gt;単行本（ソフトカバー）&lt;/dd&gt;
+    &lt;dd&gt;4621300253 (ASIN), 9784621300251 (EAN), 4621300253 (ISBN), 9784621300251 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;著者のひとりは（あの「バイブル」とも呼ばれる）通称 “K&amp;amp;R” の K のほうである。この本は Go 言語の教科書と言ってもいいだろう。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2016-07-13&#34;&gt;2016-07-13&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- プログラミング言語Go --&gt;
+</content>
+	</entry><entry>
+		<title>io/ioutil の非推奨化について</title>
+		<category term="golang" label="golang" scheme="https://text.baldanders.info/golang/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/golang/deprecation-of-ioutil/" />
+		<id>tag:text.Baldanders.info,2021-02-21:/golang/deprecation-of-ioutil/</id>
+		<published>2021-02-21T03:06:59+00:00</published>
+		<updated>2021-02-21T07:34:40+00:00</updated>
+		<summary>Refactoring は計画的に。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;先日リリースされた &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 における大きな変更のひとつとして &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;io/ioutil&lt;/code&gt;&lt;/a&gt; パッケージの非推奨化（deprecation）が挙げられる。
+Deprecation といっても近い将来に（少なくともバージョン 1.x の間は）廃止されるわけではないのだが， &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;io/ioutil&lt;/code&gt;&lt;/a&gt; パッケージは徐々にメンテナンスされなくなる可能性があるため，互換関数（または変数）へ置き換えていくことが推奨されている。&lt;/p&gt;
+&lt;p&gt;対象となる変数・関数は以下の通り。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;1.16 以降 非推奨&lt;/th&gt;
+&lt;th&gt;1.16 以降 推奨&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Discard&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/&#34; title=&#34;io - The Go Programming Language&#34;&gt;&lt;code&gt;io&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Discard&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NopCloser()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/&#34; title=&#34;io - The Go Programming Language&#34;&gt;&lt;code&gt;io&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NopCloser()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadAll()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/&#34; title=&#34;io - The Go Programming Language&#34;&gt;&lt;code&gt;io&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadAll()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadFile()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadFile()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.TempDir()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.MkdirTemp()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.TempFile()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.CreateTemp()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.WriteFile()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.WriteFile()&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;このうち &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Discard&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NopCloser()&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadAll()&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadFile()&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.WriteFile()&lt;/code&gt; については置き換え後の変数・関数のラッパーとして再実装されているので，特に気にする必要はないだろう。
+何かのついでに refactoring していけばよい。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;kn&#34;&gt;package&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;ioutil&lt;/span&gt;
+
+&lt;span class=&#34;kn&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;io&amp;#34;&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;io/fs&amp;#34;&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;os&amp;#34;&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;sort&amp;#34;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// ReadAll reads from r until an error or EOF and returns the data it read.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// A successful call returns err == nil, not err == EOF. Because ReadAll is
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// defined to read from src until EOF, it does not treat an EOF from Read
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// as an error to be reported.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, this function simply calls io.ReadAll.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ReadAll&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Reader&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;([]&lt;/span&gt;&lt;span class=&#34;kt&#34;&gt;byte&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+	&lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;ReadAll&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// ReadFile reads the file named by filename and returns the contents.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// A successful call returns err == nil, not err == EOF. Because ReadFile
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// reads the whole file, it does not treat an EOF from Read as an error
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// to be reported.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, this function simply calls os.ReadFile.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ReadFile&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;filename&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;([]&lt;/span&gt;&lt;span class=&#34;kt&#34;&gt;byte&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+	&lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;ReadFile&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// WriteFile writes data to a file named by filename.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// If the file does not exist, WriteFile creates it with permissions perm
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, this function simply calls os.WriteFile.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;WriteFile&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;filename&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;data&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;[]&lt;/span&gt;&lt;span class=&#34;kt&#34;&gt;byte&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;perm&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;fs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;FileMode&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+	&lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;WriteFile&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;filename&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;data&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;perm&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// NopCloser returns a ReadCloser with a no-op Close method wrapping
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// the provided Reader r.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, this function simply calls io.NopCloser.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;NopCloser&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;r&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Reader&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ReadCloser&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+	&lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NopCloser&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;r&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// Discard is an io.Writer on which all Write calls succeed
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// without doing anything.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, this value is simply io.Discard.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;Discard&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Writer&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;io&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Discard&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.TempDir()&lt;/code&gt; と &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.TempFile()&lt;/code&gt; においては，入出力のインタフェースは &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.MkdirTemp()&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.CreateTemp()&lt;/code&gt; と完全互換と言えるが，内部のロジックが微妙に異なる。
+もしかしたら（並行処理下で使う場合など）何らかの検証が必要かもしれない。&lt;/p&gt;
+&lt;p&gt;まぁ &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.MkdirTemp()&lt;/code&gt;, &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.CreateTemp()&lt;/code&gt; のほうが出来がいいと思うけど。
+可能なら早めに置き換えたほうがいいだろう。&lt;/p&gt;
+&lt;p&gt;問題は &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; と &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; の差異だ。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 の &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; は以下のように実装されている。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// ReadDir reads the directory named by dirname and returns
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// a list of fs.FileInfo for the directory&amp;#39;s contents,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// sorted by filename. If an error occurs reading the directory,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// ReadDir returns no directory entries along with the error.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;//
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// As of Go 1.16, os.ReadDir is a more efficient and correct choice:
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// it returns a list of fs.DirEntry instead of fs.FileInfo,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// and it returns partial results in the case of an error
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// midway through reading a directory.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ReadDir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;dirname&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;([]&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;fs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;FileInfo&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Open&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;dirname&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;!=&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Readdir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Close&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;!=&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;sort&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Slice&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;j&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;int&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;bool&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;].&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;j&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;].&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;list&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;ここで &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;fs&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.FileInfo&lt;/code&gt; 型は &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 で追加された &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;io/fs&lt;/code&gt;&lt;/a&gt; パッケージで定義されているが，中身は 1.15 までの  &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.FileInfo&lt;/code&gt; 型と全く同じである。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// A FileInfo describes a file and is returned by Stat.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;type&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;FileInfo&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;interface&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;       &lt;span class=&#34;c1&#34;&gt;// base name of the file
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Size&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;int64&lt;/span&gt;        &lt;span class=&#34;c1&#34;&gt;// length in bytes for regular files; system-dependent for others
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Mode&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;FileMode&lt;/span&gt;     &lt;span class=&#34;c1&#34;&gt;// file mode bits
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;ModTime&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Time&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;// modification time
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;IsDir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;bool&lt;/span&gt;        &lt;span class=&#34;c1&#34;&gt;// abbreviation for Mode().IsDir()
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Sys&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;interface&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;{}&lt;/span&gt;   &lt;span class=&#34;c1&#34;&gt;// underlying data source (can return nil)
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// A FileMode represents a file&amp;#39;s mode and permission bits.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// The bits have the same definition on all systems, so that
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// information about files can be moved from one system
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// to another portably. Not all bits apply to all systems.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// The only required bit is ModeDir for directories.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;type&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;FileMode&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;uint32&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;なお &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 の &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.FileInfo&lt;/code&gt; 型は &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;fs&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.FileInfo&lt;/code&gt; の &lt;a href=&#34;https://text.baldanders.info/golang/go-1_9-and-type-alias/&#34; title=&#34;Go 1.9 と Type Alias&#34;&gt;type alias&lt;/a&gt; として再定義されている。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;kn&#34;&gt;package&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;
+
+&lt;span class=&#34;kn&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;io/fs&amp;#34;&lt;/span&gt;
+	&lt;span class=&#34;s&#34;&gt;&amp;#34;syscall&amp;#34;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// A FileInfo describes a file and is returned by Stat and Lstat.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;type&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;FileInfo&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;fs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;FileInfo&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;一方 &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; は以下のように実装されている。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// A DirEntry is an entry read from a directory
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// (using the ReadDir function or a File&amp;#39;s ReadDir method).
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;type&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;DirEntry&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;fs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;DirEntry&lt;/span&gt;
+
+&lt;span class=&#34;c1&#34;&gt;// ReadDir reads the named directory,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// returning all its directory entries sorted by filename.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// If an error occurs reading the directory,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// ReadDir returns the entries it was able to read before the error,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// along with the error.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ReadDir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;name&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;([]&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;DirEntry&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;Open&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;!=&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;kc&#34;&gt;nil&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Close&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+
+    &lt;span class=&#34;nx&#34;&gt;dirs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;f&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;ReadDir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;sort&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Slice&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;dirs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;j&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;int&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;bool&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;dirs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;].&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;dirs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;j&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;].&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;})&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;dirs&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;err&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;ここで &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;fs&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.DirEntry&lt;/code&gt; 型は以下のように定義されている。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// A DirEntry is an entry read from a directory
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;// (using the ReadDir function or a ReadDirFile&amp;#39;s ReadDir method).
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;&lt;span class=&#34;kd&#34;&gt;type&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;DirEntry&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;interface&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;c1&#34;&gt;// Name returns the name of the file (or subdirectory) described by the entry.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// This name is only the final element of the path (the base name), not the entire path.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// For example, Name would return &amp;#34;hello.go&amp;#34; not &amp;#34;/home/gopher/hello.go&amp;#34;.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Name&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;string&lt;/span&gt;
+
+    &lt;span class=&#34;c1&#34;&gt;// IsDir reports whether the entry describes a directory.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;IsDir&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;bool&lt;/span&gt;
+
+    &lt;span class=&#34;c1&#34;&gt;// Type returns the type bits for the entry.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// The type bits are a subset of the usual FileMode bits, those returned by the FileMode.Type method.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Type&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;FileMode&lt;/span&gt;
+
+    &lt;span class=&#34;c1&#34;&gt;// Info returns the FileInfo for the file or subdirectory described by the entry.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// The returned FileInfo may be from the time of the original directory read
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// or from the time of the call to Info. If the file has been removed or renamed
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// since the directory read, Info may return an error satisfying errors.Is(err, ErrNotExist).
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// If the entry denotes a symbolic link, Info reports the information about the link itself,
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;c1&#34;&gt;// not the link&amp;#39;s target.
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;nf&#34;&gt;Info&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;FileInfo&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;error&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;つまり返り値から &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;fs&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.FileInfo&lt;/code&gt; の情報を取り出すには &lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;fs&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.DirEntry.Info()&lt;/code&gt; メソッドを使い，さらに返り値の error を評価する必要がある。&lt;/p&gt;
+&lt;p&gt;このように &lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;ioutil&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; と &lt;a href=&#34;https://golang.org/pkg/os/&#34; title=&#34;os - The Go Programming Language&#34;&gt;&lt;code&gt;os&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.ReadDir()&lt;/code&gt; では返り値とその評価方法が異なるため，単純な置き換えではなく，若干のコードの変更が必要となる。&lt;/p&gt;
+&lt;p&gt;Refactoring は計画的に。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/spiegel/scraps/13158f793611df&#34;&gt;#golang io/ioutil の非推奨化（deprecation）について&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/41meaSLNFfL._SL160_.jpg&#34; width=&#34;123&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;プログラミング言語Go (ADDISON-WESLEY PROFESSIONAL COMPUTING SERIES)&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;Alan A.A. Donovan (著), Brian W. Kernighan (著), 柴田 芳樹 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;丸善出版 2016-06-20&lt;/dd&gt;
+    &lt;dd&gt;単行本（ソフトカバー）&lt;/dd&gt;
+    &lt;dd&gt;4621300253 (ASIN), 9784621300251 (EAN), 4621300253 (ISBN), 9784621300251 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;著者のひとりは（あの「バイブル」とも呼ばれる）通称 “K&amp;amp;R” の K のほうである。この本は Go 言語の教科書と言ってもいいだろう。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2016-07-13&#34;&gt;2016-07-13&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- プログラミング言語Go --&gt;
+</content>
+	</entry><entry>
+		<title>2021-02-21 のブックマーク</title>
+		<category term="bookmarks" label="bookmarks" scheme="https://text.baldanders.info/bookmarks/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/bookmarks/2021/02/21-bookmarks/" />
+		<id>tag:text.Baldanders.info,2021-02-21:/bookmarks/2021/02/21-bookmarks/</id>
+		<published>2021-02-21T01:47:36+00:00</published>
+		<updated>2021-02-21T01:48:12+00:00</updated>
+		<summary>「アメリカでもプログラミングスクールに通ったがうまくいかなかった話があった」他</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;h2&gt;リリース情報&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/git-for-windows/git/releases/tag/v2.30.1.windows.1&#34; rel=&#34;nofollow&#34;&gt;Release Git for Windows 2.30.1 · git-for-windows/git · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/spf13/cobra/releases/tag/v1.1.2&#34; rel=&#34;nofollow&#34;&gt;Release v1.1.2 · spf13/cobra · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/spf13/cobra/releases/tag/v1.1.3&#34; rel=&#34;nofollow&#34;&gt;Release v1.1.3 · spf13/cobra · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/sonatype-nexus-community/nancy/releases/tag/v1.0.12&#34; rel=&#34;nofollow&#34;&gt;Release v1.0.12 · sonatype-nexus-community/nancy · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/zetamatta/go-readline-ny/releases/tag/v0.4.0&#34; rel=&#34;nofollow&#34;&gt;Release v0.4.0 · zetamatta/go-readline-ny · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.syntevo.com/blog/?p=5049&#34; rel=&#34;nofollow&#34;&gt;SmartGit 20.2.3 – syntevo blog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/sonatype-nexus-community/nancy/releases/tag/v1.0.15&#34; rel=&#34;nofollow&#34;&gt;Release v1.0.15 · sonatype-nexus-community/nancy · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/zetamatta/go-readline-ny/releases/tag/v0.4.1&#34; rel=&#34;nofollow&#34;&gt;Release v0.4.1 · zetamatta/go-readline-ny · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/zetamatta/go-readline-ny/releases/tag/v0.4.2&#34; rel=&#34;nofollow&#34;&gt;Release v0.4.2 · zetamatta/go-readline-ny · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/mattn/jvgrep/releases/tag/v5.8.9&#34; rel=&#34;nofollow&#34;&gt;Release Release v5.8.9 · mattn/jvgrep · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/zetamatta/go-readline-ny/releases/tag/v0.4.3&#34; rel=&#34;nofollow&#34;&gt;Release v0.4.3 · zetamatta/go-readline-ny · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/golangci/golangci-lint/releases/tag/v1.37.0&#34; rel=&#34;nofollow&#34;&gt;Release v1.37.0 · golangci/golangci-lint · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/mermaid-js/mermaid/releases/tag/8.9.1&#34; rel=&#34;nofollow&#34;&gt;Release 8.9.1 · mermaid-js/mermaid · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/zetamatta/nyagos/releases/tag/4.4.9_3&#34; rel=&#34;nofollow&#34;&gt;Release 4.4.9_3 · zetamatta/nyagos · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://gohugo.io/news/0.81.0-relnotes/&#34; rel=&#34;nofollow&#34;&gt;Hugo 0.81.0: The Smorgasbord Edition | Hugo&lt;/a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/gohugoio/hugo/releases/tag/v0.81.0&#34; rel=&#34;nofollow&#34;&gt;Release v0.81.0 · gohugoio/hugo · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/golangci/golangci-lint/releases/tag/v1.37.1&#34; rel=&#34;nofollow&#34;&gt;Release v1.37.1 · golangci/golangci-lint · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;バベルのインターネット&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://p2ptk.org/monopoly/3244&#34; rel=&#34;nofollow&#34;&gt;問題はビッグテックが免責されていることじゃあない、寡占こそが問題なんだ | P2Pとかその辺のお話R&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jp.techcrunch.com/2021/02/11/2021-02-09-twitter-takes-actions-on-over-500-accounts-in-india-amid-government-warning/&#34; rel=&#34;nofollow&#34;&gt;Twitterがインド当局のさらなる警告を受け500以上のアカウントを停止  |  TechCrunch Japan&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;セキュリティ＆プライバシー関連&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/sonicwall-zero-day.html&#34; rel=&#34;nofollow&#34;&gt;SonicWall Zero-Day - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.bleepingcomputer.com/news/security/malicious-script-steals-credit-card-info-stolen-by-other-hackers/&#34; rel=&#34;nofollow&#34;&gt;Malicious script steals credit card info stolen by other hackers&lt;/a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/web-credit-card-skimmer-steals-data-from-another-credit-card-skimmer.html&#34; rel=&#34;nofollow&#34;&gt;Web Credit Card Skimmer Steals Data from Another Credit Card Skimmer - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://piyolog.hatenadiary.jp/entry/2021/02/10/181319&#34; rel=&#34;nofollow&#34;&gt;米国で発生した浄水システムの不正操作についてまとめてみた - piyolog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.bloomberg.com/tosv2.html?vid=&amp;amp;uuid=a89a7f80-73e3-11eb-9394-ab2b50cabd8c&amp;amp;url=L2ZlYXR1cmVzLzIwMjEtc3VwZXJtaWNyby8=&#34; rel=&#34;nofollow&#34;&gt;Bloomberg - Are you a robot?&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/chinese-supply-chain-attack-on-computer-systems.html&#34; rel=&#34;nofollow&#34;&gt;Chinese Supply-Chain Attack on Computer Systems - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/attack-against-florida-water-treatment-facility.html&#34; rel=&#34;nofollow&#34;&gt;Attack against Florida Water Treatment Facility - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://news.mynavi.jp/article/20210214-1726115/&#34; rel=&#34;nofollow&#34;&gt;PostgreSQL 13.2、12.6、11.11、10.16、9.6.21、9.5.25公開 | TECH+&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://jp.techcrunch.com/2021/02/15/clubhouse-will-improve-security-to-china-spying-fears/&#34; rel=&#34;nofollow&#34;&gt;「Clubhouse」の音声データが中国当局に漏れる可能性が浮上、開発元はセキュリティ強化を実施  |  TechCrunch Japan&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.jpcert.or.jp/at/2021/at210009.html&#34; rel=&#34;nofollow&#34;&gt;FileZenの脆弱性（CVE-2021-20655）に関する注意喚起&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://gizmodo.com/barcode-scanning-app-for-android-pushed-malware-onto-mi-1846221452&#34; rel=&#34;nofollow&#34;&gt;Barcode Scanner Android App Pushed Malware Onto Millions&lt;/a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/malicious-barcode-scanner-app.html&#34; rel=&#34;nofollow&#34;&gt;Malicious Barcode Scanner App - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.schneier.com/blog/archives/2021/02/browser-tracking-using-favicons.html&#34; rel=&#34;nofollow&#34;&gt;Browser Tracking Using Favicons - Schneier on Security&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://gigazine.net/news/20210217-salesforce-endgame/&#34; rel=&#34;nofollow&#34;&gt;AWSアカウント攻撃ツールをSalesforceがリリースするも速攻で削除される - GIGAZINE&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://forest.watch.impress.co.jp/docs/news/1306802.html&#34; rel=&#34;nofollow&#34;&gt;危険なバッファオーバーフロー脆弱性に対処した「Python 3.6.13/3.7.10」が公開 - 窓の杜&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.jpcert.or.jp/at/2021/at210010.html&#34; rel=&#34;nofollow&#34;&gt;ISC BIND 9の脆弱性（CVE-2020-8625）に関する注意喚起&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://gigazine.net/news/20210218-open-source-extensions-malware/&#34; rel=&#34;nofollow&#34;&gt;なぜ拡張機能にマルウェアが仕込まれる問題が後を絶たないのか？ - GIGAZINE&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;知財関連&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://p2ptk.org/copyright/3246&#34; rel=&#34;nofollow&#34;&gt;MP3・海賊版・アップルはいかにして音楽業界を変えてきたのか | P2Pとかその辺のお話R&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Linux または Ubuntu に関する話題&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://kledgeb.blogspot.com/2021/02/ubuntu-2004-220-ubuntu-200420-ltslinux.html&#34; rel=&#34;nofollow&#34;&gt;Ubuntu 20.04 その220 - Ubuntu 20.04.2.0 LTSがリリースされました・Linux kernelがインストールされない不具合の修正 - kledgeb&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://kledgeb.blogspot.com/2021/02/ubuntu-2004-219-thunderbird.html&#34; rel=&#34;nofollow&#34;&gt;Ubuntu 20.04 その219 - Thunderbird 78の採用へ・Thunderbirdのメジャーアップデート - kledgeb&lt;/a&gt; : 結局 PGP/MIME を使いたいなら Thunderbird しか選択肢がなさそうなんだけど， Thunderbird はクソみたいな独自ライブラリで鍵管理していて GnuPG では上手く動かないんだよなぁ&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Windows に関する話題&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/negokaz/articles/windows-terminal-osc_9_9&#34; rel=&#34;nofollow&#34;&gt;Windows Terminal で現在のディレクトリを引き継いでペインやタブを複製する&lt;/a&gt; : Windows Terminal 1.6 からの機能&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Go 言語関連&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://blog.golang.org/go1.16&#34; rel=&#34;nofollow&#34;&gt;Go 1.16 is released - The Go Blog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4798063991?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34; rel=&#34;nofollow&#34;&gt;Go言語 ハンズオン | 掌田津耶乃 |本 | 通販 | Amazon&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/pbnjay/grate&#34; rel=&#34;nofollow&#34;&gt;GitHub - pbnjay/grate: A Go native tabular data extraction package. Currently supports .xls, .xlsx, .csv, .tsv formats.&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/numacci/articles/golang-stack-queue&#34; rel=&#34;nofollow&#34;&gt;Go言語 (Golang) でintのスタックとキューを実装してみる&lt;/a&gt; : 記事では slice を使っているが，ぶっちゃけヤバいので &lt;a href=&#34;https://golang.org/pkg/container/list/&#34; rel=&#34;nofollow&#34;&gt;&lt;code&gt;container/list&lt;/code&gt;&lt;/a&gt; パッケージを使いましょう&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/komisan19/articles/aec74dd8223095&#34; rel=&#34;nofollow&#34;&gt;Go+WebAssemblyで時刻表示を実装してみた&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://blog.golang.org/go116-module-changes&#34; rel=&#34;nofollow&#34;&gt;New module changes in Go 1.16 - The Go Blog&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Rust 言語関連&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/rustrust_foundationawsgoogle.html&#34; rel=&#34;nofollow&#34;&gt;Rust言語を推進する「Rust Foundation」設立。AWS、Google、マイクロソフト、モジラ、ファーウェイらが設立メンバー － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/uu/articles/48e2d4098b6aca&#34; rel=&#34;nofollow&#34;&gt;Rustを使って円周率1億桁計算したお話&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://blog.rust-lang.org/2021/02/11/Rust-1.50.0.html&#34; rel=&#34;nofollow&#34;&gt;Announcing Rust 1.50.0 | Rust Blog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/ulwlu/articles/3096c221d31493&#34; rel=&#34;nofollow&#34;&gt;RustでTOTP(Time-based One-Time Password)を、RFCだけ見て原理原則から実装する&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;その他&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/googleosvopen_source_vulnerabilities.html&#34; rel=&#34;nofollow&#34;&gt;Google、オープンソースソフトウェアの脆弱性をバージョンごとにデータベース化する「OSV」（Open Source Vulnerabilities）プロジェクトを開始 － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://emojipedia.org/&#34; rel=&#34;nofollow&#34;&gt;📙 Emojipedia — 😃 Home of Emoji Meanings 💁👌🎍😍&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/slack1aws_transit_gatewayaws.html&#34; rel=&#34;nofollow&#34;&gt;Slack、1月の大規模障害の原因を説明。「AWS Transit Gateway」がトラフィックの急上昇に対応できず、AWSはアルゴリズムを見直すと － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/catnose99/scraps/d7ef29424cbaef&#34; rel=&#34;nofollow&#34;&gt;満足して使っている有料サービスの一覧&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://dev.classmethod.jp/articles/vscode-remote-containers-golang/&#34; rel=&#34;nofollow&#34;&gt;VSCodeとDockerでMacにGolangの開発環境を作成する | DevelopersIO&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/mattn/articles/ec5c28652b5b12&#34; rel=&#34;nofollow&#34;&gt;Raspberry Pi Pico で独自学習した TensorFlow Lite のモデルを使う&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/excellambdaexcelceoexcel.html&#34; rel=&#34;nofollow&#34;&gt;Excelの新機能「Lambda関数」によって「Excelの数式がチューリング完全になった」とナデラCEO。プログラミング言語としてのExcel数式であらゆる計算が可能に － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.yamdas.org/column/technique/wikipedia-at-20-ch21j.html&#34; rel=&#34;nofollow&#34;&gt;ウィキペディアにはバイアスの問題がある（Wikipedia Has a Bias Problem 日本語訳）&lt;/a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://yamdas.hatenablog.com/entry/20210215/wikipedia-at-20-ch21&#34; rel=&#34;nofollow&#34;&gt;『Wikipedia @ 20』の第21章「ウィキペディアにはバイアスの問題がある」も訳してみた - YAMDAS現更新履歴&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://yamdas.hatenablog.com/entry/20210215/coding-bootcamp-trap&#34; rel=&#34;nofollow&#34;&gt;アメリカでもプログラミングスクールに通ったがうまくいかなかった話があった - YAMDAS現更新履歴&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://yamdas.hatenablog.com/entry/20210215/you-are-here&#34; rel=&#34;nofollow&#34;&gt;偏向した言論や陰謀論など現在の汚染されたインターネットのフィールドガイド『You Are Here』が面白そうだ - YAMDAS現更新履歴&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/googlepython_software_foundationcpython.html&#34; rel=&#34;nofollow&#34;&gt;GoogleがPython Software Foundationへの支援を強化「ビジョナリースポンサー」に。CPython実装のための常駐開発者を雇用へ － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://japan.zdnet.com/article/35166549/&#34; rel=&#34;nofollow&#34;&gt;「AI」と呼ばれなくなる日も近い？&amp;ndash;あらゆる現場に浸透が進む - ZDNet Japan&lt;/a&gt; : 幻滅期から普及期へってところかねぇ&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/amazon_rdsmysqlmariadb.html&#34; rel=&#34;nofollow&#34;&gt;Amazon RDSのMySQL/MariaDBがレプリケーションフィルターをサポート。特定のテーブルだけを選んでレプリカを作成 － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/catnose99/scraps/e94c8e789f846a&#34; rel=&#34;nofollow&#34;&gt;markdown-itでURLにアンダースコアが含まれていると自動リンク（linkify）がおかしくなる件&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.publickey1.jp/blog/21/apple_m1docker_desktopkubernetes.html&#34; rel=&#34;nofollow&#34;&gt;Apple M1チップ対応のDocker Desktop、同梱のKubernetesも実行可能に － Publickey&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://oshidori-makoken.com/?p=5087&#34; rel=&#34;nofollow&#34;&gt;【取材メモ】島根県知事、五輪開催に反対の会見・質疑、書き起こし | COVID-19 | OSHIDORI Mako&amp;amp;Ken Portal / おしどりポータルサイト&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/catnose99/articles/e0d42812c7588c&#34; rel=&#34;nofollow&#34;&gt;【Chrome】textareaの改行時にカーソル位置がガタっとずれる問題の対処法&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+	</entry><entry>
+		<title>time.Ticker で遊ぶ【Go 1.16 バージョン】</title>
+		<category term="golang" label="golang" scheme="https://text.baldanders.info/golang/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/golang/ticker-2/" />
+		<id>tag:text.Baldanders.info,2021-02-18:/golang/ticker-2/</id>
+		<published>2021-02-18T12:34:25+00:00</published>
+		<updated>2021-02-21T01:48:12+00:00</updated>
+		<summary>素敵なキャンセルライフを（笑）</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;ずいぶん前に「&lt;a href=&#34;https://text.baldanders.info/golang/ticker/&#34; title=&#34;time.Ticker で遊ぶ&#34;&gt;time.Ticker で遊ぶ&lt;/a&gt;」と言う記事を書いたのだが，先日&lt;a href=&#34;https://text.baldanders.info/release/2021/02/go-1_16-is-released/&#34; title=&#34;Go 1.16 がリリースされた&#34;&gt;リリース&lt;/a&gt;された &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 で &lt;a href=&#34;https://golang.org/pkg/os/signal/&#34; title=&#34;signal - The Go Programming Language&#34;&gt;&lt;code&gt;signal&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NotifyContext()&lt;/code&gt; 関数が追加された記念に，これを使った改訂版の記事を書いてみたいと思う。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/golang/ticker/&#34; title=&#34;time.Ticker で遊ぶ&#34;&gt;前回&lt;/a&gt;と同じくお題は以下の通り。&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;一定周期ごとの処理を行う&lt;/li&gt;
+&lt;li&gt;Ctrl+C 等の割り込み処理を行う&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2&gt;一定周期ごとの処理を行う&lt;/h2&gt;
+&lt;p&gt;これは&lt;a href=&#34;https://text.baldanders.info/golang/ticker/&#34; title=&#34;time.Ticker で遊ぶ&#34;&gt;前回&lt;/a&gt;の記事をほぼそのまま使いまわそう。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// +build run
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;
+&lt;span class=&#34;kn&#34;&gt;package&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;main&lt;/span&gt;
+
+&lt;span class=&#34;kn&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;fmt&amp;#34;&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;time&amp;#34;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NewTicker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Second&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;//1秒周期の ticker
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;fmt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Println&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;#34;Stopping ticker...&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Stop&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}()&lt;/span&gt;
+
+    &lt;span class=&#34;k&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;select&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;case&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;now&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;lt;-&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;C&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+            &lt;span class=&#34;nx&#34;&gt;fmt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Println&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;now&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Format&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;RFC3339&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;main&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;前回でも説明した通り， &lt;a href=&#34;http://blog.golang.org/defer-panic-and-recover&#34; title=&#34;Defer, Panic, and Recover - The Go Blog&#34;&gt;defer&lt;/a&gt; 構文を使って終了時に &lt;a href=&#34;http://golang.org/pkg/time/&#34; title=&#34;time - The Go Programming Language&#34;&gt;&lt;code&gt;time&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Ticker.Stop()&lt;/code&gt; 関数で周期イベントを止めようとしているが，実際には無限ループなので return まで到達しない（笑）&lt;/p&gt;
+&lt;h2&gt;NotifyContext 関数で SIGNAL を捕まえる&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; では SIGINT や SIGTERM といった OS から送信される &lt;a href=&#34;https://linuxjm.osdn.jp/html/LDP_man-pages/man7/signal.7.html&#34; title=&#34;Man page of SIGNAL&#34;&gt;SIGNAL&lt;/a&gt; をイベントとして &lt;a href=&#34;http://golang.org/ref/spec#Channel_types&#34; title=&#34;The Go Programming Language Specification - The Go Programming Language&#34;&gt;channel&lt;/a&gt; に送り込む仕掛けがある（ちなみに Ctrl+C は SIGINT として送られる）。
+さらに &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 では  &lt;a href=&#34;https://linuxjm.osdn.jp/html/LDP_man-pages/man7/signal.7.html&#34; title=&#34;Man page of SIGNAL&#34;&gt;SIGNAL&lt;/a&gt; イベントを &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Context&lt;/code&gt; のキャンセル・イベントとして実装できるようになった。&lt;/p&gt;
+&lt;p&gt;たとえば，こんな感じに書ける。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;c1&#34;&gt;// +build run
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;
+&lt;span class=&#34;kn&#34;&gt;package&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;main&lt;/span&gt;
+
+&lt;span class=&#34;kn&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;context&amp;#34;&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;fmt&amp;#34;&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;os&amp;#34;&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;os/signal&amp;#34;&lt;/span&gt;
+    &lt;span class=&#34;s&#34;&gt;&amp;#34;time&amp;#34;&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+
+&lt;span class=&#34;hl&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;/span&gt;    &lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NewTicker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Second&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;c1&#34;&gt;//1秒周期の ticker
+&lt;/span&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;fmt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Println&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;#34;Stopping ticker...&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Stop&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}()&lt;/span&gt;
+
+    &lt;span class=&#34;k&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;select&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;case&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;now&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;lt;-&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;t&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;C&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;:&lt;/span&gt;
+            &lt;span class=&#34;nx&#34;&gt;fmt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Println&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;now&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Format&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;RFC3339&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;))&lt;/span&gt;
+&lt;span class=&#34;hl&#34;&gt;        &lt;span class=&#34;k&#34;&gt;case&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;lt;-&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Done&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;():&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;hl&#34;&gt;            &lt;span class=&#34;nx&#34;&gt;fmt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Println&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;#34;cancellation from context:&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Err&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;())&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;hl&#34;&gt;            &lt;span class=&#34;k&#34;&gt;return&lt;/span&gt;
+&lt;/span&gt;        &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+
+&lt;span class=&#34;hl&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;run&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;hl&#34;&gt;    &lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;_&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;signal&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NotifyContext&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Background&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(),&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Interrupt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;hl&#34;&gt;    &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;hl&#34;&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/span&gt;
+&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;main&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;span class=&#34;hl&#34;&gt;    &lt;span class=&#34;nf&#34;&gt;run&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt; パッケージは並行処理下で使うことが多いだろう。
+たとえば &lt;code&gt;run()&lt;/code&gt; 関数をこんな感じに書き換えてみるか。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;run&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;_&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;signal&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NotifyContext&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Background&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(),&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Interrupt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;sync&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;WaitGroup&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;++&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Add&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;go&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+            &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Done&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+            &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;}()&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Wait&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;これで平行に動作している全ての &lt;code&gt;ticker()&lt;/code&gt; に対してキャンセルを送り込むことができる。&lt;/p&gt;
+&lt;p&gt;上のコード例ではひとつの &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Context&lt;/code&gt; インスタンスを複数の &lt;a href=&#34;http://golang.org/ref/spec#Go_statements&#34; title=&#34;The Go Programming Language Specification - The Go Programming Language&#34;&gt;goroutine&lt;/a&gt; で使いまわしているが，以下のように&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;run&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;sync&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;WaitGroup&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;++&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Add&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;go&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+            &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Done&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+            &lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;_&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;signal&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NotifyContext&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Background&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(),&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Interrupt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+            &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;}()&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Wait&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;各 &lt;a href=&#34;http://golang.org/ref/spec#Go_statements&#34; title=&#34;The Go Programming Language Specification - The Go Programming Language&#34;&gt;goroutine&lt;/a&gt; ごとに &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Context&lt;/code&gt; インスタンスを生成してセットしても全ての &lt;code&gt;ticker()&lt;/code&gt; を &lt;code&gt;Ctrl+C&lt;/code&gt; で問題なく止めることができた。&lt;/p&gt;
+&lt;h2&gt;キャンセル・イベントの伝搬&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt; パッケージは，名前の通り，異なるレイヤやドメイン間でコンテキスト情報を受け渡しするためのパッケージだが，親から子にキャンセルイベントが伝搬する性質がある（逆向きには伝搬しない）。
+たとえば&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;run&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;parent&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;_&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;signal&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NotifyContext&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Background&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(),&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Interrupt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+    &lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;sync&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;WaitGroup&lt;/span&gt;
+    &lt;span class=&#34;k&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;3&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;++&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;i&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;
+        &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Add&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;k&#34;&gt;go&lt;/span&gt; &lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+            &lt;span class=&#34;k&#34;&gt;defer&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Done&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+            &lt;span class=&#34;nx&#34;&gt;child&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;_&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;WithTimeout&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;parent&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Duration&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;mi&#34;&gt;5&lt;/span&gt;&lt;span class=&#34;o&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;time&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Second&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+            &lt;span class=&#34;nf&#34;&gt;ticker&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;child&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;n&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+        &lt;span class=&#34;p&#34;&gt;}()&lt;/span&gt;
+    &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+    &lt;span class=&#34;nx&#34;&gt;wg&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Wait&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt;
+&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;などとすれば各  &lt;a href=&#34;http://golang.org/ref/spec#Go_statements&#34; title=&#34;The Go Programming Language Specification - The Go Programming Language&#34;&gt;goroutine&lt;/a&gt; の &lt;code&gt;ticker()&lt;/code&gt; 関数に &lt;a href=&#34;https://linuxjm.osdn.jp/html/LDP_man-pages/man7/signal.7.html&#34; title=&#34;Man page of SIGNAL&#34;&gt;SIGNAL&lt;/a&gt; イベントとタイムアウト・イベントの両方を仕込むことができる。&lt;/p&gt;
+&lt;p&gt;また&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;nx&#34;&gt;ctx&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;cancel&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;:=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;signal&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;NotifyContext&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;context&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Background&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(),&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;os&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;Interrupt&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とした場合の返り値の &lt;code&gt;cancel&lt;/code&gt; は関数値になっていて，これをキックすることでペアとなっている &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Context&lt;/code&gt; インスタンス（上のコードなら &lt;code&gt;ctx&lt;/code&gt;）にキャンセル・イベントを発生させることができる。
+実際の使い方として &lt;a href=&#34;https://golang.org/pkg/os/signal/&#34; title=&#34;signal - The Go Programming Language&#34;&gt;&lt;code&gt;signal&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NotifyContext()&lt;/code&gt; 関数は main &lt;a href=&#34;http://golang.org/ref/spec#Go_statements&#34; title=&#34;The Go Programming Language Specification - The Go Programming Language&#34;&gt;goroutine&lt;/a&gt; に近いところで &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.WithCancel()&lt;/code&gt; 関数と置き換えることが多いのではないだろうか。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt; について詳しくは『&lt;a href=&#34;https://www.amazon.co.jp/dp/4873118468?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;Go 言語による並行処理&lt;/a&gt;』の 4.12 章が参考になる。
+素敵なキャンセル・ライフを（笑）&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://mattn.kaoriya.net/software/lang/go/20200916090416.htm&#34;&gt;Big Sky :: os/signal に NotifyContext が入った。&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4873118468?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/51pUKQajnaL._SL160_.jpg&#34; width=&#34;125&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4873118468?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;Go言語による並行処理&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;Katherine Cox-Buday (著), 山口 能迪 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;オライリージャパン 2018-10-26&lt;/dd&gt;
+    &lt;dd&gt;単行本（ソフトカバー）&lt;/dd&gt;
+    &lt;dd&gt;4873118468 (ASIN), 9784873118468 (EAN), 4873118468 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;&lt;a href=&#34;https://www.oreilly.co.jp/books/9784873118468/&#34;&gt;Eブック版もある&lt;/a&gt;。感想は&lt;a href=&#34;https://text.baldanders.info/remark/2018/11/concurrency-in-go/&#34;&gt;こちら&lt;/a&gt;。 Go 言語で並行処理を書くならこの本は必読書になるだろう。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2020-01-13&#34;&gt;2020-01-13&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- Go言語による並行処理 --&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/41meaSLNFfL._SL160_.jpg&#34; width=&#34;123&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;プログラミング言語Go (ADDISON-WESLEY PROFESSIONAL COMPUTING SERIES)&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;Alan A.A. Donovan (著), Brian W. Kernighan (著), 柴田 芳樹 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;丸善出版 2016-06-20&lt;/dd&gt;
+    &lt;dd&gt;単行本（ソフトカバー）&lt;/dd&gt;
+    &lt;dd&gt;4621300253 (ASIN), 9784621300251 (EAN), 4621300253 (ISBN), 9784621300251 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;著者のひとりは（あの「バイブル」とも呼ばれる）通称 “K&amp;amp;R” の K のほうである。この本は Go 言語の教科書と言ってもいいだろう。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2016-07-13&#34;&gt;2016-07-13&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- プログラミング言語Go --&gt;
+</content>
+	</entry><entry>
+		<title>DSA は NIST 電子署名標準から外れるようだ</title>
+		<category term="remark" label="remark" scheme="https://text.baldanders.info/remark/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/remark/2021/02/dsa-deprecation/" />
+		<id>tag:text.Baldanders.info,2021-02-17:/remark/2021/02/dsa-deprecation/</id>
+		<published>2021-02-17T11:53:55+00:00</published>
+		<updated>2021-02-17T12:01:33+00:00</updated>
+		<summary>ドラフト版 FIPS 186-5 の DSA の節の内容がまるっと削られている。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;&lt;a href=&#34;https://golang.org/doc/go1.16&#34; title=&#34;Go 1.16 Release Notes - The Go Programming Language&#34;&gt;Go 1.16 のリリースノート&lt;/a&gt;を眺めていて今さら気付いたのだが，いまだ&lt;a href=&#34;https://csrc.nist.gov/publications/detail/fips/186/5/draft&#34; title=&#34;FIPS 186-5 (Draft), Digital Signature Standard (DSS) | CSRC&#34;&gt;ドラフト中の FIPS 186-5&lt;/a&gt; によると， DSA を「電子署名生成用途としては」電子署名標準（Digital Signature Standard; DSS）から外すつもりのようだ。
+ドラフト版 &lt;a href=&#34;https://csrc.nist.gov/publications/detail/fips/186/5/draft&#34; title=&#34;FIPS 186-5 (Draft), Digital Signature Standard (DSS) | CSRC&#34;&gt;FIPS 186-5&lt;/a&gt; の DSA の節はまるっと削られて以下の文章のみ掲載されている。&lt;/p&gt;
+&lt;figure lang=&#34;en&#34;&gt;
+&lt;blockquote&gt;&lt;q&gt;Prior versions of this standard specified the DSA. This standard no longer approves DSA for digital signature generation. DSA may be used to verify signatures generated prior to the implementation date of this standard. See FIPS 186-4 [20] for the specifications for DSA&lt;/q&gt;.&lt;/blockquote&gt;
+&lt;figcaption&gt;&lt;div&gt;via &lt;q&gt;&lt;a href=&#34;https://csrc.nist.gov/publications/detail/fips/186/5/draft&#34;&gt;FIPS 186-5 (Draft), Digital Signature Standard (DSS)&lt;/a&gt;&lt;/q&gt;&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;鍵長の問題（現在は鍵長を変数化することで対処している）以外はアルゴリズム自体に危殆化問題があるわけではないと思うが，出自がアレだし実装面の複雑さ&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt; もあって評判がよろしくないのは聞いていた。
+まぁ「設計限界」というやつなんだろう。&lt;/p&gt;
+&lt;p&gt;その代わりといってはナニだが楕円曲線暗号のひとつである EdDSA (楕円曲線 ed25519/ed488) が &lt;a href=&#34;https://csrc.nist.gov/publications/detail/fips/186/5/draft&#34; title=&#34;FIPS 186-5 (Draft), Digital Signature Standard (DSS) | CSRC&#34;&gt;FIPS 186-5&lt;/a&gt; から電子署名標準のひとつとして加わることになっている。
+これについては以前に記事を書いた（なんでそのときに DSA に気がつかなかったのか）。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/remark/2020/06/eddsa/&#34;&gt;Edwards-curve Digital Signature Algorithm&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;まぁ，時代は楕円曲線暗号ということなのだろう。
+次期 &lt;a href=&#34;http://tools.ietf.org/html/rfc4880&#34; title=&#34;RFC 4880 - OpenPGP Message Format&#34;&gt;OpenPGP&lt;/a&gt; である &lt;a href=&#34;https://datatracker.ietf.org/doc/draft-ietf-openpgp-rfc4880bis/&#34; title=&#34;draft-ietf-openpgp-rfc4880bis - OpenPGP Message Format&#34;&gt;RFC 4880bis&lt;/a&gt; が正式にリリースされるタイミングでメインの鍵を替えようかと目論んでいるのだが，前倒ししたほうがいいのかねぇ。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/golang/go/issues/40337&#34;&gt;crypto/dsa: deprecate and remove from crypto/x509 and x/crypto/ssh · Issue #40337 · golang/go · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://buttondown.email/cryptography-dispatches/archive/cryptography-dispatches-dsa-is-past-its-prime/&#34;&gt;Cryptography Dispatches: DSA Is Past Its Prime&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/openpgp/using-ecc-with-gnupg/&#34;&gt;そろそろ GnuPG でも ECC を標準で使うのがいいんじゃないかな&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/release/2021/02/go-1_16-is-released/&#34;&gt;Go 1.16 がリリースされた&lt;/a&gt;： Go 1.16 では &lt;a href=&#34;https://golang.org/pkg/crypto/dsa/&#34; title=&#34;dsa - The Go Programming Language&#34;&gt;&lt;code&gt;crypto/dsa&lt;/code&gt;&lt;/a&gt; パッケージが非推奨になった。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/B015643CPE?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/51t6yHHVwEL._SL160_.jpg&#34; width=&#34;113&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/B015643CPE?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;暗号技術入門 第3版　秘密の国のアリス&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;結城 浩 (著)&lt;/dd&gt;
+    &lt;dd&gt;SBクリエイティブ 2015-08-25 (Release 2015-09-17)&lt;/dd&gt;
+    &lt;dd&gt;Kindle版&lt;/dd&gt;
+    &lt;dd&gt;B015643CPE (ASIN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;SHA-3 や Bitcoin/Blockchain など新しい知見や技術要素を大幅追加。暗号技術を使うだけならこれ1冊でとりあえず無問題。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2015-09-20&#34;&gt;2015-09-20&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- 暗号技術入門 第3版 --&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4314009071?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/51ZRZ62WKCL._SL160_.jpg&#34; width=&#34;108&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4314009071?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;暗号化 プライバシーを救った反乱者たち&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;スティーブン・レビー (著), 斉藤 隆央 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;紀伊國屋書店 2002-02-16&lt;/dd&gt;
+    &lt;dd&gt;単行本&lt;/dd&gt;
+    &lt;dd&gt;4314009071 (ASIN), 9784314009072 (EAN), 4314009071 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;20世紀末，暗号技術の世界で何があったのか。知りたかったらこちらを読むべし！&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2015-03-09&#34;&gt;2015-03-09&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- 暗号化 プライバシーを救った反乱者たち --&gt;
+&lt;section class=&#34;footnotes&#34; role=&#34;doc-endnotes&#34;&gt;
+&lt;hr&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn:1&#34; role=&#34;doc-endnote&#34;&gt;
+&lt;p&gt;DSA は実装に必要な要素技術が多く，そのうちのひとつでも瑕疵があれば全体のセキュリティ強度が下がってしまう。 &lt;a href=&#34;#fnref:1&#34; class=&#34;footnote-backref&#34; role=&#34;doc-backlink&#34;&gt;&amp;#x21a9;&amp;#xfe0e;&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;
+</content>
+	</entry><entry>
+		<title>Go 1.16 がリリースされた</title>
+		<category term="release" label="release" scheme="https://text.baldanders.info/release/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/release/2021/02/go-1_16-is-released/" />
+		<id>tag:text.Baldanders.info,2021-02-17:/release/2021/02/go-1_16-is-released/</id>
+		<published>2021-02-17T10:16:04+00:00</published>
+		<updated>2021-02-21T07:17:03+00:00</updated>
+		<summary>毎度のごとく多岐にわたる変更あり。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;&lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; 1.16 がリリースされた。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://groups.google.com/g/golang-announce/c/q-exD-8mG3w&#34;&gt;Go 1.16 is released&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;毎度のごとく変更は多岐にわたるが，個人的に気になった部分を挙げておく。&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;macOS の 64bit ARM アーキテクチャをサポート。 &lt;code&gt;darwin/arm64&lt;/code&gt; で指定可能。またこれにより iOS ポートが &lt;code&gt;ios/arm64&lt;/code&gt; または &lt;code&gt;ios/amd64&lt;/code&gt; にリネームされた（後者は iOS シミュレータ用）&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;GO111MODULE&lt;/code&gt; 環境変数の既定値が &lt;code&gt;on&lt;/code&gt; になった。以前の状態に戻すには &lt;code&gt;auto&lt;/code&gt; を指定すること&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;go install&lt;/code&gt; コマンドの引数がバージョン番号サフィックスを受け入れるようになった
+&lt;ul&gt;
+&lt;li&gt;例： &lt;code&gt;go install example.com/cmd@v1.0.0&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;go build&lt;/code&gt; や &lt;code&gt;go test&lt;/code&gt; などのビルド系コマンド実行時に go.mod&lt;code&gt; や go.sum&lt;/code&gt; ファイルの変更を行わなくなった&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;go.mod&lt;/code&gt; によるモジュール設定で &lt;code&gt;retract&lt;/code&gt; ディレクティブが追加された&lt;/li&gt;
+&lt;li&gt;ラベルのない for ループ，メソッド値，型スイッチのある関数をインライン化できるようになった&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/embed/&#34; title=&#34;embed - The Go Programming Language&#34;&gt;&lt;code&gt;embed&lt;/code&gt;&lt;/a&gt; パッケージおよび &lt;code&gt;//go:embed&lt;/code&gt;  ディレクティブの追加&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/io/fs/&#34; title=&#34;fs - The Go Programming Language&#34;&gt;&lt;code&gt;io/fs&lt;/code&gt;&lt;/a&gt; パッケージの追加によりファイルシステムの汎化が容易になった&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/io/ioutil/&#34; title=&#34;ioutil - The Go Programming Language&#34;&gt;&lt;code&gt;io/ioutil&lt;/code&gt;&lt;/a&gt; パッケージの非推奨化&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/crypto/dsa/&#34; title=&#34;dsa - The Go Programming Language&#34;&gt;&lt;code&gt;crypto/dsa&lt;/code&gt;&lt;/a&gt; パッケージの非推奨化。これに伴い &lt;a href=&#34;https://golang.org/pkg/crypto/x509/&#34; title=&#34;x509 - The Go Programming Language&#34;&gt;&lt;code&gt;crypto/x509&lt;/code&gt;&lt;/a&gt; で DSA による電子署名検証機能がドロップされた（電子署名生成は以前からないらしい）&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/os/signal/&#34; title=&#34;signal - The Go Programming Language&#34;&gt;&lt;code&gt;os/signal&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.NotifyContext()&lt;/code&gt; 関数の追加。これにより SIGNAL 到着時に &lt;a href=&#34;https://golang.org/pkg/context/&#34; title=&#34;context - The Go Programming Language&#34;&gt;&lt;code&gt;context&lt;/code&gt;&lt;/a&gt;&lt;code&gt;.Context&lt;/code&gt; によるキャンセルを容易に実装できる&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://golang.org/pkg/strconv/&#34; title=&#34;strconv - The Go Programming Language&#34;&gt;&lt;code&gt;strconv&lt;/code&gt;&lt;/a&gt; のパフォーマンス改善（最大で2倍らしい）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;例によって &lt;a href=&#34;https://www.ubuntu.com/&#34; title=&#34;The leading operating system for PCs, IoT devices, servers and the cloud | Ubuntu&#34;&gt;Ubuntu&lt;/a&gt; の APT で管理している &lt;a href=&#34;https://golang.org/&#34; title=&#34;The Go Programming Language&#34;&gt;Go&lt;/a&gt; コンパイラは古いので，&lt;a href=&#34;https://golang.org/dl/&#34; title=&#34;Downloads - The Go Programming Language&#34;&gt;ダウンロードページ&lt;/a&gt;からバイナリ（&lt;a href=&#34;https://golang.org/dl/go1.16.linux-amd64.tar.gz&#34;&gt;&lt;code&gt;go1.16.linux-amd64.tar.gz&lt;/code&gt;&lt;/a&gt;）を取ってきて手動でインストールすることを強く推奨する。
+以下は手動での作業例。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ cd /usr/local/src
+$ sudo curl -L &amp;#34;https://golang.org/dl/go1.16.linux-amd64.tar.gz&amp;#34; -O
+$ cd ..
+$ sudo unlink go # 以前の Go が入っている場合
+$ sudo tar xvf src/go1.16.linux-amd64.tar.gz
+$ sudo mv go go1.16
+$ sudo ln -s go1.16 go
+$ go version # /usr/local/go/bin にパスが通っている場合
+go version go1.16 linux/amd64
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;アップデートは計画的に。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://blog.golang.org/go1.16&#34;&gt;Go 1.16 is released - The Go Blog&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://golang.org/doc/go1.16&#34;&gt;Go 1.16 Release Notes - The Go Programming Language&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://qiita.com/c-yan/items/f6f504d5e1c1caceace4&#34;&gt;Go 1.16 リリースノート 日本語訳  - Qiita&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/remark/2021/02/dsa-deprecation/&#34;&gt;DSA は NIST 電子署名標準から外れるようだ&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/golang/ticker-2/&#34;&gt;time.Ticker で遊ぶ【Go 1.16 バージョン】&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/golang/deprecation-of-ioutil/&#34;&gt;io/ioutil の非推奨化について&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href=&#34;https://text.baldanders.info/golang/manage-modules/&#34;&gt;Go 1.16 からのモジュール管理&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/41meaSLNFfL._SL160_.jpg&#34; width=&#34;123&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4621300253?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;プログラミング言語Go (ADDISON-WESLEY PROFESSIONAL COMPUTING SERIES)&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;Alan A.A. Donovan (著), Brian W. Kernighan (著), 柴田 芳樹 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;丸善出版 2016-06-20&lt;/dd&gt;
+    &lt;dd&gt;単行本（ソフトカバー）&lt;/dd&gt;
+    &lt;dd&gt;4621300253 (ASIN), 9784621300251 (EAN), 4621300253 (ISBN), 9784621300251 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;著者のひとりは（あの「バイブル」とも呼ばれる）通称 “K&amp;amp;R” の K のほうである。この本は Go 言語の教科書と言ってもいいだろう。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2016-07-13&#34;&gt;2016-07-13&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- プログラミング言語Go --&gt;
+</content>
+	</entry><entry>
+		<title>手遊びで日本版 Google COVID-19 Forecast データを取得するツールを作ってみた</title>
+		<category term="release" label="release" scheme="https://text.baldanders.info/release/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/release/2021/02/cov19jpn/" />
+		<id>tag:text.Baldanders.info,2021-02-14:/release/2021/02/cov19jpn/</id>
+		<published>2021-02-14T10:38:03+00:00</published>
+		<updated>2021-02-14T10:39:14+00:00</updated>
+		<summary>大した機能はないが，よろしければどうぞ。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;天下無敵の無職の頃は自分の住んでる地域以外はあまり気にする必要がなかったが，仕事をするようになれば客先地域の感染状況とかも気にしないといけない。
+ただ，公表されている情報に関しては自治体によってバラバラで統一性がなく，国レベルで整理して公表しているというわけでもないっぽい？&lt;/p&gt;
+&lt;p&gt;で，軽くググってみたが Google が公開している日本版 COVID-19 Forecast データが使いやすいようだ。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/spiegel/scraps/e992be8b03eeb7&#34;&gt;日本版 Google COVID-19 Forecast データを眺める&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;予測値はともかく，実績値だけでもこのレベルで国が取り扱ってくれんもんかねぇ。&lt;/p&gt;
+&lt;p&gt;愚痴はともかく，このデータを使って簡単なツールを作ってみた。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://github.com/spiegel-im-spiegel/cov19jpn&#34;&gt;spiegel-im-spiegel/cov19jpn: COVID-2019 in Japan; Importing Google COVID-19 Public Forecasts&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;たとえばコマンドラインで&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ cov19jpn plot tokyo
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;とかやれば&lt;/p&gt;
+&lt;figure style=&#39;margin:0 auto;text-align:center;&#39;&gt;&lt;a href=&#34;./tokyo-cov19-chart.png&#34;&gt;&lt;img src=&#34;./tokyo-cov19-chart.png&#34; srcset=&#34;./tokyo-cov19-chart.png 500w&#34; sizes=&#34;(min-width:600px) 500px, 80vw&#34; alt=&#34;tokyo-cov19-chart.png&#34;&gt;&lt;/a&gt;&lt;figcaption&gt;&lt;div&gt;&lt;a href=&#34;./tokyo-cov19-chart.png&#34;&gt;tokyo-cov19-chart.png&lt;/a&gt;&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;てな感じに棒グラフを出力してくれる。
+ちなみに7日単位の集計で，過去4週間分の実績値と，それに続く1週間分の予測値を表示している。
+個人的には AI 予測は「当たるも八卦」とあまり信用してないが，1週間分なら多少は参考になるかもしれない。&lt;/p&gt;
+&lt;p&gt;なお，コマンドラインの都道府県名を省略すると47都道府県のグラフをそれぞれ出力するのでご注意を（笑）&lt;/p&gt;
+&lt;p&gt;あと，&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ cov19jpn csv tokyo
+japan_prefecture_code,prefecture_name,target_prediction_date,cumulative_confirmed,cumulative_confirmed_q0025,cumulative_confirmed_q0975,cumulative_deaths,cumulative_deaths_q0025,cumulative_deaths_q0975,hospitalized_patients,hospitalized_patients_q0025,hospitalized_patients_q0975,recovered,recovered_q0025,recovered_q0975,cumulative_confirmed_ground_truth,cumulative_deaths_ground_truth,hospitalized_patients_ground_truth,recovered_ground_truth,forecast_date,new_deaths,new_confirmed,new_deaths_ground_truth,new_confirmed_ground_truth,prefecture_name_kanji
+JP-13,TOKYO,2021-01-15,,,,,,,,,,,,,82069,717,19797,61555,2021-02-11,,,,,東京都
+JP-13,TOKYO,2021-01-16,,,,,,,,,,,,,83878,720,19879,63279,2021-02-11,,,3,1809,東京都
+JP-13,TOKYO,2021-01-17,,,,,,,,,,,,,85470,725,20646,64099,2021-02-11,,,5,1592,東京都
+JP-13,TOKYO,2021-01-18,,,,,,,,,,,,,86674,728,20777,65169,2021-02-11,,,3,1204,東京都
+JP-13,TOKYO,2021-01-19,,,,,,,,,,,,,87914,744,20289,66881,2021-02-11,,,16,1240,東京都
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;などと都道府県単位で絞って CSV 出力することも可能。&lt;/p&gt;
+&lt;p&gt;手遊びで作ったものなので大した機能はないが，よろしければどうぞ。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/release/2020/09/cov19data-package-is-released/&#34;&gt;WHO COVID-2019 データを取得するパッケージを作ってみた&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;!-- eof --&gt;
+</content>
+	</entry><entry>
+		<title>Libgcrypt 1.9 系へのアップグレードはちょっと待ちなはれ</title>
+		<category term="release" label="release" scheme="https://text.baldanders.info/release/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/release/2021/02/libgcrypt-1_9-series/" />
+		<id>tag:text.Baldanders.info,2021-02-11:/release/2021/02/libgcrypt-1_9-series/</id>
+		<published>2021-02-11T02:24:15+00:00</published>
+		<updated>2021-02-11T02:51:23+00:00</updated>
+		<summary>GnuPG 2.2 系のみに Libgcrypt を使っているのなら今すぐ 1.9 系にアップグレードする必要はない。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;なんかメチャメチャ忙しい。
+この前うっかり休日出勤したら，その後の体調が急落してしまった。
+他のプロジェクトメンバにはホンマに申し訳ないが，祝日と休日（と土曜日）はカレンダー通り休ませてもらうことにした。
+歳をとるとあちこちガタが来るのよ。
+マジすんません &lt;abbr class=&#34;emoji-chars&#34; title=&#34;ペコン&#34;&gt;&amp;#x1f647;&lt;/abbr&gt;&lt;/p&gt;
+&lt;p&gt;&lt;ruby&gt;&lt;rb&gt;閑話休題&lt;/rb&gt;&lt;rp&gt; (&lt;/rp&gt;&lt;rt&gt;それはさておき&lt;/rt&gt;&lt;rp&gt;) &lt;/rp&gt;&lt;/ruby&gt;。&lt;/p&gt;
+&lt;p&gt;先月の話で恐縮だが，ついに 1.9 系の &lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; が安定版としてリリースされた。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://lists.gnupg.org/pipermail/gnupg-announce/2021q1/000453.html&#34;&gt;[Announce] Libgcrypt 1.9.0 relased&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;これによると&lt;/p&gt;
+&lt;figure lang=&#34;en&#34;&gt;
+&lt;blockquote&gt;&lt;q&gt;We are pleased to announce the availability of Libgcrypt version 1.9.0. This release starts a new stable branch of Libgcrypt with full API and ABI compatibility to the 1.8 series.  Over the last 3 or 4 years Jussi Kivilinna put a lot of work into speeding up the algorithms for the most commonly used CPUs&lt;/q&gt;.&lt;/blockquote&gt;
+&lt;figcaption&gt;&lt;div&gt;via &lt;q&gt;&lt;a href=&#34;https://lists.gnupg.org/pipermail/gnupg-announce/2021q1/000453.html&#34;&gt;Libgcrypt 1.9.0 relased&lt;/a&gt;&lt;/q&gt;&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;とのことで，現行の 1.8 系との後方互換性を図りつつ，パフォーマンス改善やアルゴリズム追加等が行われているようだ。
+詳しくは以下の通り。&lt;/p&gt;
+&lt;figure lang=&#34;en&#34;&gt;
+&lt;blockquote&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;New and extended interfaces:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;New curves Ed448, X448, and SM2.&lt;/li&gt;
+&lt;li&gt;New cipher mode EAX.&lt;/li&gt;
+&lt;li&gt;New cipher algo SM4.&lt;/li&gt;
+&lt;li&gt;New hash algo SM3.&lt;/li&gt;
+&lt;li&gt;New hash algo variants SHA512/224 and SHA512/256.&lt;/li&gt;
+&lt;li&gt;New MAC algos for Blake-2 algorithms, the new SHA512 variants, SM3, SM4 and for a GOST variant.&lt;/li&gt;
+&lt;li&gt;New convenience function &lt;code&gt;gcry_mpi_get_ui&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;gcry_sexp_extract_param&lt;/code&gt; understands new format specifiers to directly store to integers and strings.&lt;/li&gt;
+&lt;li&gt;New function &lt;code&gt;gcry_ecc_mul_point&lt;/code&gt; and curve constants for Curve448 and Curve25519.  [#4293]&lt;/li&gt;
+&lt;li&gt;New function &lt;code&gt;gcry_ecc_get_algo_keylen&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;New control code &lt;code&gt;GCRYCTL_AUTO_EXPAND_SECMEM&lt;/code&gt; to allow growing the secure memory area.  Also in 1.8.2 as an undocumented feature.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Performance:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Optimized implementations for Aarch64.&lt;/li&gt;
+&lt;li&gt;Faster implementations for Poly1305 and ChaCha.  Also for PowerPC.  [b9a471ccf5,172ad09cbe,#4460]&lt;/li&gt;
+&lt;li&gt;Optimized implementations of AES and SHA-256 on PowerPC. [#4529,#4530]&lt;/li&gt;
+&lt;li&gt;Improved use of AES-NI to speed up AES-XTS (6 times faster). [a00c5b2988]&lt;/li&gt;
+&lt;li&gt;Improved use of AES-NI for OCB.  [eacbd59b13,e924ce456d]&lt;/li&gt;
+&lt;li&gt;Speedup AES-XTS on ARMv8/CE (2.5 times faster).  [93503c127a]&lt;/li&gt;
+&lt;li&gt;New AVX and AVX2 implementations for Blake-2 (1.3/1.4 times faster).  [af7fc732f9, da58a62ac1]&lt;/li&gt;
+&lt;li&gt;Use Intel SHA extension for SHA-1 and SHA-256 (4.0/3.7 times faster).  [d02958bd30, 0b3ec359e2]&lt;/li&gt;
+&lt;li&gt;Use ARMv7/NEON accelerated GCM implementation (3 times faster). [2445cf7431]&lt;/li&gt;
+&lt;li&gt;Use of i386/SSSE3 for SHA-512 (4.5 times faster on Ryzen 7). [b52dde8609]&lt;/li&gt;
+&lt;li&gt;Use 64 bit ARMv8/CE PMULL for CRC (7 times faster).  [14c8a593ed]&lt;/li&gt;
+&lt;li&gt;Improve CAST5 (40% to 70% faster).  [4ec566b368]&lt;/li&gt;
+&lt;li&gt;Improve Blowfish (60% to 80% faster).  [ced7508c85]&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;figcaption&gt;&lt;div&gt;via &lt;q&gt;&lt;a href=&#34;https://lists.gnupg.org/pipermail/gnupg-announce/2021q1/000453.html&#34;&gt;Libgcrypt 1.9.0 relased&lt;/a&gt;&lt;/q&gt;&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;現行の 1.8 系は LTS バージョンという位置付けで今後もサポートされるようだ。
+また &lt;a href=&#34;https://gnupg.org/&#34; title=&#34;The GNU Privacy Guard&#34;&gt;GnuPG&lt;/a&gt; 2.2 系も併せて LTS の位置付けに&lt;a href=&#34;https://gnupg.org/download/&#34; title=&#34;GnuPG - Download&#34;&gt;なっている&lt;/a&gt;。
+おそらく 2.3 系の一般リリースが近いのであろう。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; は汎用の暗号ライブラリだが &lt;a href=&#34;https://gnupg.org/&#34; title=&#34;The GNU Privacy Guard&#34;&gt;GnuPG&lt;/a&gt; 以外で使っている事例を寡聞にして知らない。
+ほとんどのユーザはそうだと思うが &lt;a href=&#34;https://gnupg.org/&#34; title=&#34;The GNU Privacy Guard&#34;&gt;GnuPG&lt;/a&gt; 2.2 系のみに &lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; を使っているのなら今すぐ 1.9 系にアップグレードする必要はない。
+しばらくは推移を見守っていたほうがいいだろう。
+当分は頻繁なアップデートが行われるだろうし，重大なバグや脆弱性については 1.8 系にもフィードバックされる筈である&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;。&lt;/p&gt;
+&lt;p&gt;なお &lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; 1.9.0 でさっそく脆弱性が見つかって 1.9.1 がリリースされている。&lt;/p&gt;
+&lt;figure lang=&#34;en&#34;&gt;
+&lt;blockquote&gt;&lt;q&gt;There is a heap buffer overflow in libgcrypt due to an incorrect assumption in the block buffer management code. Just decrypting some data can overflow a heap buffer with attacker controlled data, no verification or signature is validated before the vulnerability occurs&lt;/q&gt;.&lt;/blockquote&gt;
+&lt;figcaption&gt;&lt;div&gt;via &lt;q&gt;&lt;a href=&#34;https://lists.gnupg.org/pipermail/gnupg-announce/2021q1/000456.html&#34;&gt;[Announce] [Security fix] Libgcrypt 1.9.1 relased&lt;/a&gt;&lt;/q&gt;&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;既に &lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; 1.9.0 を運用している場合はアップデートしませう。&lt;/p&gt;
+&lt;h2&gt;アップデートは計画的に&lt;/h2&gt;
+&lt;p&gt;最近の &lt;a href=&#34;https://gnupg.org/&#34; title=&#34;The GNU Privacy Guard&#34;&gt;GnuPG&lt;/a&gt; 関連のアップデート状況は以下の通り。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th style=&#34;text-align:right&#34;&gt;#&lt;/th&gt;
+&lt;th&gt;パッケージ名&lt;/th&gt;
+&lt;th&gt;バージョン&lt;/th&gt;
+&lt;th&gt;公開日&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;更新&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/libgpg-error/&#34;&gt;Libgpg-error&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;1.41&lt;/td&gt;
+&lt;td&gt;2020-12-21&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;2a&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; (LTS)&lt;/td&gt;
+&lt;td&gt;1.8.7&lt;/td&gt;
+&lt;td&gt;2020-10-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;2b&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;1.9.1&lt;/td&gt;
+&lt;td&gt;2021-01-29&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;span&gt;&lt;i class=&#34;fas fa-check&#34;&gt;&lt;/i&gt;&lt;/span&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/libassuan/&#34;&gt;Libassuan&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;2.5.4&lt;/td&gt;
+&lt;td&gt;2020-10-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/libksba/&#34;&gt;Libksba&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;1.5.0&lt;/td&gt;
+&lt;td&gt;2020-11-18&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;5&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/npth/&#34;&gt;nPth&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;1.6&lt;/td&gt;
+&lt;td&gt;2018-07-16&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;6&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/ntbtls/&#34;&gt;ntbTLS&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;0.2.0&lt;/td&gt;
+&lt;td&gt;2020-08-27&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:right&#34;&gt;7&lt;/td&gt;
+&lt;td&gt;&lt;a href=&#34;https://gnupg.org/software/&#34;&gt;GnuPG&lt;/a&gt; (LTS)&lt;/td&gt;
+&lt;td&gt;2.2.27&lt;/td&gt;
+&lt;td&gt;2021-01-11&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;脆弱性が公表されると碌に中身も見ずに「すぐにアップデートしろ」みたいなことを言う馬鹿メディアもあるようだが，20年前の牧歌的な時代ならともかく今は可用性（availability）も明確にセキュリティ・リスクとして認知されているんだから，考えなしにアップデートできるわけ無いだろ！ セキュリティ部品はシステム規模が大きくなる程いざというときの影響が大きい。
+勿論いつまでも放置するのは論外だが。&lt;/p&gt;
+&lt;p&gt;というわけで，アップデートは計画的に。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/openpgp/&#34;&gt;OpenPGP の実装&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4314009071?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/51ZRZ62WKCL._SL160_.jpg&#34; width=&#34;108&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4314009071?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;暗号化 プライバシーを救った反乱者たち&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;スティーブン・レビー (著), 斉藤 隆央 (翻訳)&lt;/dd&gt;
+    &lt;dd&gt;紀伊國屋書店 2002-02-16&lt;/dd&gt;
+    &lt;dd&gt;単行本&lt;/dd&gt;
+    &lt;dd&gt;4314009071 (ASIN), 9784314009072 (EAN), 4314009071 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;20世紀末，暗号技術の世界で何があったのか。知りたかったらこちらを読むべし！&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2015-03-09&#34;&gt;2015-03-09&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- 暗号化 プライバシーを救った反乱者たち --&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/B015643CPE?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/51t6yHHVwEL._SL160_.jpg&#34; width=&#34;113&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/B015643CPE?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;暗号技術入門 第3版　秘密の国のアリス&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;結城 浩 (著)&lt;/dd&gt;
+    &lt;dd&gt;SBクリエイティブ 2015-08-25 (Release 2015-09-17)&lt;/dd&gt;
+    &lt;dd&gt;Kindle版&lt;/dd&gt;
+    &lt;dd&gt;B015643CPE (ASIN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;SHA-3 や Bitcoin/Blockchain など新しい知見や技術要素を大幅追加。暗号技術を使うだけならこれ1冊でとりあえず無問題。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2015-09-20&#34;&gt;2015-09-20&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- 暗号技術入門 第3版 --&gt;
+&lt;section class=&#34;footnotes&#34; role=&#34;doc-endnotes&#34;&gt;
+&lt;hr&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn:1&#34; role=&#34;doc-endnote&#34;&gt;
+&lt;p&gt;&lt;a href=&#34;https://gnupg.org/software/libgcrypt/&#34;&gt;Libgcrypt&lt;/a&gt; 1.8 系がいつまでサポートされるかは明示されていないが， 1.7 系のときは1年前には予告があったので，それまでは気にしなくてもいいと思う。 &lt;a href=&#34;#fnref:1&#34; class=&#34;footnote-backref&#34; role=&#34;doc-backlink&#34;&gt;&amp;#x21a9;&amp;#xfe0e;&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;
+</content>
+	</entry><entry>
+		<title>2022年の暦</title>
+		<category term="remark" label="remark" scheme="https://text.baldanders.info/remark/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/remark/2021/02/ephemeris-in-2022/" />
+		<id>tag:text.Baldanders.info,2021-02-07:/remark/2021/02/ephemeris-in-2022/</id>
+		<published>2021-02-07T08:48:03+00:00</published>
+		<updated>2021-02-07T09:00:17+00:00</updated>
+		<summary>今年も国立天文台より翌年（2022年）の暦要項が公開された。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;先日の話だが，今年も国立天文台より翌年（2022年）の暦要項が公開された。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://eco.mtk.nao.ac.jp/koyomi/yoko/index.html&#34;&gt;暦要項 - 国立天文台暦計算室&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.nao.ac.jp/news/topics/2021/20210201-rekiyoko.html&#34;&gt;令和4（2022）年暦要項の発表 | 国立天文台(NAOJ)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以降，いくつか抜粋してみる。&lt;/p&gt;
+&lt;h2&gt;祝日・休日&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/h2&gt;
+&lt;p&gt;2022年は振替休日なし。
+今年みたいに急に変更されなければ，だけど（笑）&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;日付&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;曜日&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-01-01&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;土&lt;/td&gt;
+&lt;td&gt;元日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-01-10&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;成人の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-02-11&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;金&lt;/td&gt;
+&lt;td&gt;建国記念の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-02-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;水&lt;/td&gt;
+&lt;td&gt;天皇誕生日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-03-21&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;春分の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-04-29&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;金&lt;/td&gt;
+&lt;td&gt;昭和の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-03&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;火&lt;/td&gt;
+&lt;td&gt;憲法記念日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-04&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;水&lt;/td&gt;
+&lt;td&gt;みどりの日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-05&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;木&lt;/td&gt;
+&lt;td&gt;こどもの日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-07-18&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;海の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-08-11&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;木&lt;/td&gt;
+&lt;td&gt;山の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-09-19&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;敬老の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-09-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;金&lt;/td&gt;
+&lt;td&gt;秋分の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-10-10&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;スポーツの日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-11-03&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;木&lt;/td&gt;
+&lt;td&gt;文化の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-11-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;水&lt;/td&gt;
+&lt;td&gt;勤労感謝の日&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2&gt;2022年の暦象&lt;/h2&gt;
+&lt;p&gt;2022年には日食2回と月食2回がある。
+ただし日本で見られるのは 2022-11-08 の皆既月食のみらしい。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;日付&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;曜日&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-01&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;日&lt;/td&gt;
+&lt;td&gt;部分日食&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-16&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;皆既月食&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-10-25&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;火&lt;/td&gt;
+&lt;td&gt;部分日食&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-11-08&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;火&lt;/td&gt;
+&lt;td&gt;皆既月食&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;figure&gt;
+&lt;blockquote&gt;&lt;ul&gt;
+&lt;li&gt;5月1日には部分日食がありますが、日本では見ることができません。&lt;/li&gt;
+&lt;li&gt;5月16日には皆既月食がありますが、日本では見ることができません。&lt;/li&gt;
+&lt;li&gt;10月25日には部分日食がありますが、日本では見ることができません。&lt;/li&gt;
+&lt;li&gt;11月8日には皆既月食があり、日本では全国で皆既食を見ることができます。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;figcaption&gt;&lt;div&gt;&lt;q&gt;&lt;a href=&#34;https://www.nao.ac.jp/news/topics/2021/20210201-rekiyoko.html&#34;&gt;令和4（2022）年暦要項の発表 | 国立天文台(NAOJ)&lt;/a&gt;&lt;/q&gt;より&lt;/div&gt;&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;他にはこんな感じ。&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;日付&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;曜日&lt;/th&gt;
+&lt;th&gt;内容&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-02-04&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;金&lt;/td&gt;
+&lt;td&gt;立春&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-03-21&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;春分&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-05-05&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;木&lt;/td&gt;
+&lt;td&gt;立夏&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-06-21&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;火&lt;/td&gt;
+&lt;td&gt;夏至&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-08-07&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;日&lt;/td&gt;
+&lt;td&gt;立秋&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-09-23&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;金&lt;/td&gt;
+&lt;td&gt;秋分&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-11-07&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;月&lt;/td&gt;
+&lt;td&gt;立冬&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2022-12-22&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;木&lt;/td&gt;
+&lt;td&gt;冬至&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;ちなみに2022年の「&lt;a href=&#34;https://www.nao.ac.jp/faq/a0310.html&#34; title=&#34;質問3-10）伝統的七夕について教えて | 国立天文台&#34;&gt;伝統的七夕&lt;/a&gt;」は8月4日である。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/remark/2019/05/google-ephemeris/&#34;&gt;カレンダーに祝日を入れたいなら国立天文台へ行けばいいじゃない&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://zenn.dev/spiegel/articles/20201205-koyomi&#34;&gt;国立天文台から最新の暦情報を取ってくる【広告記事】&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;参考図書&lt;/h2&gt;
+&lt;div class=&#34;hreview&#34;&gt;
+  &lt;div class=&#34;photo&#34;&gt;&lt;a class=&#34;item url&#34; href=&#34;https://www.amazon.co.jp/dp/4416620616?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;&lt;img src=&#34;https://m.media-amazon.com/images/I/414Ar7oLWML._SL160_.jpg&#34; width=&#34;111&#34; alt=&#34;photo&#34;&gt;&lt;/a&gt;&lt;/div&gt;
+  &lt;dl class=&#34;fn&#34;&gt;
+    &lt;dt&gt;&lt;a href=&#34;https://www.amazon.co.jp/dp/4416620616?tag=baldandersinf-22&amp;amp;linkCode=ogi&amp;amp;th=1&amp;amp;psc=1&#34;&gt;天文年鑑 2021年版&lt;/a&gt;&lt;/dt&gt;
+    &lt;dd&gt;天文年鑑編集委員会 (編集)&lt;/dd&gt;
+    &lt;dd&gt;誠文堂新光社 2020-11-24&lt;/dd&gt;
+    &lt;dd&gt;単行本&lt;/dd&gt;
+    &lt;dd&gt;4416620616 (ASIN), 9784416620618 (EAN), 4416620616 (ISBN)&lt;/dd&gt;
+    &lt;dd&gt;評価&lt;abbr class=&#34;rating fa-sm&#34; title=&#34;5&#34;&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&amp;nbsp;&lt;i class=&#34;fas fa-star&#34;&gt;&lt;/i&gt;&lt;/abbr&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+  &lt;p class=&#34;description&#34;&gt;天文ファン必携。2021年版。なお，記載されている祝日・休日は改正前のものなのでご注意を。&lt;/p&gt;
+  &lt;p class=&#34;powered-by&#34;&gt;reviewed by &lt;a href=&#39;#maker&#39; class=&#39;reviewer&#39;&gt;Spiegel&lt;/a&gt; on &lt;abbr class=&#34;dtreviewed&#34; title=&#34;2020-11-25&#34;&gt;2020-11-25&lt;/abbr&gt; (powered by &lt;a href=&#34;https://affiliate.amazon.co.jp/assoc_credentials/home&#34;&gt;PA-APIv5&lt;/a&gt;)&lt;/p&gt;
+&lt;/div&gt; &lt;!-- 天文年鑑 2021年版 --&gt;
+&lt;section class=&#34;footnotes&#34; role=&#34;doc-endnotes&#34;&gt;
+&lt;hr&gt;
+&lt;ol&gt;
+&lt;li id=&#34;fn:1&#34; role=&#34;doc-endnote&#34;&gt;
+&lt;p&gt;「国民の祝日」は休日となる。また「「国民の祝日」が日曜日に当たるときは、その日後においてその日に最も近い「国民の祝日」でない日を休日とする」（「国民の祝日に関する法律」より）。 &lt;a href=&#34;#fnref:1&#34; class=&#34;footnote-backref&#34; role=&#34;doc-backlink&#34;&gt;&amp;#x21a9;&amp;#xfe0e;&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/section&gt;
+</content>
+	</entry><entry>
+		<title>LibreOffice 7.1 へのアップグレード</title>
+		<category term="release" label="release" scheme="https://text.baldanders.info/release/" />
+		<link rel="alternate" type="text/html" href="https://text.baldanders.info/release/2021/02/upgrade-libreoffice-7_1/" />
+		<id>tag:text.Baldanders.info,2021-02-07:/release/2021/02/upgrade-libreoffice-7_1/</id>
+		<published>2021-02-07T07:48:31+00:00</published>
+		<updated>2021-02-07T07:51:31+00:00</updated>
+		<summary>いつもどおり，手動でアップグレード。</summary>
+		<author>
+			<name>Spiegel</name>
+			<uri>https://baldanders.info/profile/</uri>
+		</author>
+		
+	<link rel="cc:license" type="application/rdf+xml" href="https://creativecommons.org/licenses/by-sa/4.0/rdf" />
+
+
+		<content type="html" xml:lang="ja" xml:base="https://text.baldanders.info/">&lt;p&gt;&lt;a href=&#34;https://www.libreoffice.org/&#34; title=&#34;LibreOffice - Free Office Suite - Fun Project - Fantastic People&#34;&gt;LibreOffice&lt;/a&gt; 7.1 がリリースされた。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://blog.documentfoundation.org/blog/2021/02/03/libreoffice-7-1-community/&#34;&gt;LibreOffice 7.1 Community released by The Document Foundation - The Document Foundation Blog&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://forest.watch.impress.co.jp/docs/news/1304425.html&#34;&gt;無償のオフィス総合ソフト「LibreOffice 7.1 Community」がリリース - 窓の杜&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href=&#34;https://www.ubuntu.com/&#34; title=&#34;The leading operating system for PCs, IoT devices, servers and the cloud | Ubuntu&#34;&gt;Ubuntu&lt;/a&gt; で &lt;a href=&#34;https://www.libreoffice.org/&#34; title=&#34;LibreOffice - Free Office Suite - Fun Project - Fantastic People&#34;&gt;LibreOffice&lt;/a&gt; を導入する方法はいくつかあるが，&lt;a href=&#34;https://text.baldanders.info/release/2020/08/upgrade-libreoffice-7_0/&#34;&gt;前回&lt;/a&gt;と同じく今回も&lt;a href=&#34;https://www.libreoffice.org/&#34; title=&#34;LibreOffice - Free Office Suite - Fun Project - Fantastic People&#34;&gt;公式サイト&lt;/a&gt;から &lt;code&gt;*.deb&lt;/code&gt; ファイルを取ってきてインストールした。
+細かくチェックしたわけではないが 7.0 でも &lt;a href=&#34;https://tools.ietf.org/html/rfc4880&#34; title=&#34;RFC 4880 - OpenPGP Message Format&#34;&gt;OpenPGP&lt;/a&gt; 鍵で暗号化したファイルが開けたので，まぁ問題なかろう。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://www.libreoffice.org/&#34; title=&#34;LibreOffice - Free Office Suite - Fun Project - Fantastic People&#34;&gt;LibreOffice&lt;/a&gt; は異なるバージョンと共存できてしまうので 7.1 系のみを使うのであれば以前のバージョンは削除する。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ sudo apt purge libreoffice7.0* libobasis7.0*
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;7.1 系を削除する場合も&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ sudo apt purge libreoffice7.1* libobasis7.1*
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;でよい。&lt;/p&gt;
+&lt;p&gt;もし上の APT コマンドで上手く行かない場合は&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ dpkg -l | grep libreoffice
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;あるいは&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;$ dpkg -l | grep libobasis
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;で一覧を出してひとつづつ &lt;code&gt;sudo pkg -r&lt;/code&gt; コマンドで削除していくしかない（依存関係に注意）。&lt;/p&gt;
+&lt;h2&gt;ブックマーク&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://text.baldanders.info/remark/2019/05/installing-libreoffice-in-ubuntu/&#34;&gt;Ubuntu に LibreOffice をインストールする3つの方法&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+	</entry>
+</feed>

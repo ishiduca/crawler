@@ -1,0 +1,20 @@
+{
+  "parallelStream": {
+    "parallel": 3,
+    "options": {
+      "objectMode": true,
+      "ordered": false
+    }
+  },
+  "backoff": {
+    "failAfter": 10
+  },
+  "request": {
+    "options": {
+      "headers": {
+        "user-agent": "hyperquest/2.13"
+      }
+    },
+    "redirect": 5
+  }
+}
