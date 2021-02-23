@@ -83,6 +83,7 @@ Crawler.prototype._request = function (uri, _options, done) {
       me.emit('response', res)
 
       redirect = isRedirect(req, res) && res.headers.location
+
       if (redirect) {
         if ((redirectCount += 1) >= me.config.request.redirect) {
           return done(createRedirectError(req, res))
@@ -151,8 +152,9 @@ Crawler.prototype.setHeadersMap = function (uri, res) {
 
 function isRedirect (req, res) {
   var statusCode = Number(res.statusCode)
+  var method = req.method || (req.request && req.request.method)
   return (
-    req.method === 'GET' &&
+    method === 'GET' &&
     res.headers.location && (
       statusCode === 301 ||
       statusCode === 302 ||
