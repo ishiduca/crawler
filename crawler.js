@@ -3,7 +3,7 @@ var xtend = require('xtend')
 var backoff = require('backoff')
 var inherits = require('inherits')
 var hyperquest = require('hyperquest')
-var { parallel } = require('mississippi')
+var { parallel, pipeline, through } = require('mississippi')
 var defaults = require('./defaults')
 
 function Crawler (options) {
@@ -36,22 +36,29 @@ Crawler.prototype.createStream = function (mapper = {}) {
   var { parallelStream } = this.config
   var { parallel: max, options: parallelOptions } = parallelStream
 
-  return parallel(max, parallelOptions, (line, done) => {
-    var [ type, uri, options, ...args ] = line
-    me.request(uri, options, (error, response) => {
-      if (error) {
-        me.emit('error', error)
-        return done()
-      }
+  return pipeline.obj(
+    parallel(max, parallelOptions, (line, done) => {
+      var [ type, uri, options, ...args ] = line
+      me.request(uri, options, (error, response) => {
+        if (error) {
+          me.emit('error', error)
+          return done()
+        }
 
-      if (mapper[type]) {
-        var xargs = [ uri, response, ...args, done ]
-        return mapper[type].apply(null, xargs)
-      }
+        if (response == null) {
+          return done()
+        }
 
-      done(null, response)
-    })
-  })
+        if (mapper[type]) {
+          var xargs = [ uri, response, ...args, done ]
+          return mapper[type].apply(null, xargs)
+        }
+
+        done(null, response)
+      })
+    }),
+    through.obj()
+  )
 }
 
 Crawler.prototype.request = function (uri, options, done) {
@@ -80,6 +87,7 @@ Crawler.prototype._request = function (uri, _options, done) {
     req.uri = uri
     req.on('error', error => done(error))
     req.on('response', res => {
+      res.uri = uri
       me.emit('response', res)
 
       redirect = isRedirect(req, res) && res.headers.location
